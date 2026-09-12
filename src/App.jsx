@@ -233,14 +233,19 @@ function Header({ page, setPage, menuOpen, setMenuOpen }) {
   );
 }
 
-function Footer({ setPage }) {
+function Footer({ setPage, settings }) {
+  const phone = settings?.phone || "+234 806 098 4868";
+  const email = settings?.email || "hello@manikmaterials.ng";
+  const address = settings?.address || "Gwaraka, Aluminum Village, Habitat Plaza";
+  const hours = settings?.hours || "Mon – Sat, 8am – 6pm";
+  const hoursSunday = settings?.hoursSunday || "Closed";
   return (
     <footer style={{ background: C.steel, color: C.aluLight }}>
       <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
         <div>
           <div className="flex items-center gap-2 mb-4">
             <span style={{ width: 10, height: 10, background: C.safety }} />
-            <span className="ff-display text-lg font-semibold" style={{ color: C.cream }}>MANIK</span>
+            <span className="ff-display text-lg font-semibold" style={{ color: C.cream }}>{settings?.businessName || "MANIK"}</span>
           </div>
           <p className="ff-body text-sm leading-relaxed">Aluminium and building materials for modern construction. Supply, fabrication and installation.</p>
         </div>
@@ -252,14 +257,14 @@ function Footer({ setPage }) {
         </div>
         <div>
           <p className="ff-mono text-xs uppercase tracking-widest mb-4" style={{ color: C.safety }}>Contact</p>
-          <p className="ff-body text-sm mb-2 flex items-center gap-2"><Phone size={14} /> +234 806 098 4868</p>
-          <p className="ff-body text-sm mb-2 flex items-center gap-2"><Mail size={14} /> hello@manikmaterials.ng</p>
-          <p className="ff-body text-sm flex items-start gap-2"><MapPin size={14} className="mt-1" /> Gwaraka, Aluminum Village, Habitat Plaza</p>
+          <p className="ff-body text-sm mb-2 flex items-center gap-2"><Phone size={14} /> {phone}</p>
+          <p className="ff-body text-sm mb-2 flex items-center gap-2"><Mail size={14} /> {email}</p>
+          <p className="ff-body text-sm flex items-start gap-2"><MapPin size={14} className="mt-1" /> {address}</p>
         </div>
         <div>
           <p className="ff-mono text-xs uppercase tracking-widest mb-4" style={{ color: C.safety }}>Hours</p>
-          <p className="ff-body text-sm mb-2 flex items-center gap-2"><Clock size={14} /> Mon – Sat, 8am – 6pm</p>
-          <p className="ff-body text-sm">Sunday: Closed</p>
+          <p className="ff-body text-sm mb-2 flex items-center gap-2"><Clock size={14} /> {hours}</p>
+          <p className="ff-body text-sm">Sunday: {hoursSunday}</p>
         </div>
       </div>
       <div className="ff-mono text-xs text-center py-5" style={{ borderTop: `1px solid ${C.steelLine}`, color: "#6B7076" }}>
@@ -269,10 +274,11 @@ function Footer({ setPage }) {
   );
 }
 
-function WhatsAppFloat() {
+function WhatsAppFloat({ settings }) {
+  const number = settings?.whatsapp || WHATSAPP_NUMBER;
   return (
     <a
-      href={`https://wa.me/${WHATSAPP_NUMBER}`}
+      href={`https://wa.me/${number}`}
       target="_blank" rel="noreferrer"
       className="fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full shadow-lg"
       style={{ width: 54, height: 54, background: "#25D366" }}
@@ -326,9 +332,11 @@ function ProductCard({ p, onOpen }) {
 /* ---------------------------------------------------------------
    QUOTE FORM — the killer feature
 ------------------------------------------------------------------ */
+const REQUEST_TYPES = ["Material", "Fabrication", "Installation", "Delivery", "Full project"];
+
 function QuoteForm({ presetProduct, products = [] }) {
   const [form, setForm] = useState({
-    name: "", phone: "", product: presetProduct || "", qty: "", notes: "", contact: "WhatsApp",
+    requestType: "Material", name: "", phone: "", product: presetProduct || "", qty: "", location: "", notes: "", contact: "WhatsApp",
   });
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
@@ -337,23 +345,29 @@ function QuoteForm({ presetProduct, products = [] }) {
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const waLink = useMemo(() => {
-    const text = `Quote request\nName: ${form.name}\nPhone: ${form.phone}\nProduct: ${form.product}\nQuantity: ${form.qty}\nNotes: ${form.notes}\nPreferred contact: ${form.contact}`;
+    const text = `Quote request (${form.requestType})\nName: ${form.name}\nPhone: ${form.phone}\nProduct: ${form.product}\nQuantity: ${form.qty}\nLocation: ${form.location}\nNotes: ${form.notes}\nPreferred contact: ${form.contact}`;
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
   }, [form]);
 
   const submit = async () => {
-    if (!form.name.trim() || !form.phone.trim() || !form.product.trim()) {
-      setErr("Fill in your name, phone number and product before sending.");
+    if (!form.name.trim() || !form.phone.trim()) {
+      setErr("Fill in your name and phone number before sending.");
+      return;
+    }
+    if (form.requestType === "Material" && !form.product.trim()) {
+      setErr("Let us know which product you need.");
       return;
     }
     setErr("");
     setSubmitting(true);
     try {
       await api.submitQuote({
+        requestType: form.requestType,
         name: form.name,
         phone: form.phone,
         product: form.product,
         quantity: form.qty,
+        location: form.location,
         notes: form.notes,
         preferredContact: form.contact,
       });
@@ -383,14 +397,23 @@ function QuoteForm({ presetProduct, products = [] }) {
 
   return (
     <div className="p-6 md:p-8" style={{ background: C.cream, border: `1px solid ${C.ink}22` }}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <Field label="What do you need?">
+        <div className="flex flex-wrap gap-2 mb-1">
+          {REQUEST_TYPES.map(t => (
+            <button key={t} onClick={() => update("requestType", t)} className="ff-mono text-xs uppercase px-3 py-2" style={{ border: `1px solid ${form.requestType === t ? C.safety : "#C9C5BA"}`, color: form.requestType === t ? C.safety : "#6B6960" }}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
         <Field label="Name">
           <input value={form.name} onChange={e => update("name", e.target.value)} placeholder="Your full name" className="w-full" style={inputStyle} />
         </Field>
         <Field label="Phone number">
           <input value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="080..." className="w-full" style={inputStyle} />
         </Field>
-        <Field label="Product">
+        <Field label={form.requestType === "Material" ? "Product" : "Product (if applicable)"}>
           {products.length > 0 ? (
             <select value={form.product} onChange={e => update("product", e.target.value)} className="w-full" style={inputStyle}>
               <option value="">Select a product</option>
@@ -403,6 +426,11 @@ function QuoteForm({ presetProduct, products = [] }) {
         <Field label="Quantity">
           <input value={form.qty} onChange={e => update("qty", e.target.value)} placeholder="e.g. 20 pieces" className="w-full" style={inputStyle} />
         </Field>
+        {form.requestType !== "Material" && (
+          <Field label="Project location" full>
+            <input value={form.location} onChange={e => update("location", e.target.value)} placeholder="Where is the work/delivery needed?" className="w-full" style={inputStyle} />
+          </Field>
+        )}
         <Field label="Additional requirements" full>
           <textarea value={form.notes} onChange={e => update("notes", e.target.value)} placeholder="Colour, size, delivery location, timeline..." rows={3} className="w-full" style={inputStyle} />
         </Field>
@@ -445,7 +473,7 @@ const inputStyle = {
 /* ---------------------------------------------------------------
    PAGES
 ------------------------------------------------------------------ */
-function Home({ setPage, openProduct, products, categories, projects, loading }) {
+function Home({ setPage, openProduct, products, categories, projects, loading, settings }) {
   const featured = products.slice(0, 4);
   return (
     <div>
@@ -472,7 +500,12 @@ function Home({ setPage, openProduct, products, categories, projects, loading })
         </div>
         <div style={{ borderTop: `1px solid ${C.steelLine}` }}>
           <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[["10+", "Years experience"], ["500+", "Projects supplied"], ["100%", "Quality materials"], ["24/7", "Customer support"]].map(([n, l]) => (
+            {[
+              [settings?.stats?.years || "10+", "Years experience"],
+              [settings?.stats?.projects || "500+", "Projects supplied"],
+              [settings?.stats?.quality || "100%", "Quality materials"],
+              [settings?.stats?.support || "24/7", "Customer support"],
+            ].map(([n, l]) => (
               <div key={l}>
                 <p className="ff-display text-2xl md:text-3xl font-semibold" style={{ color: C.safety }}>{n}</p>
                 <p className="ff-mono text-xs uppercase tracking-wide mt-1" style={{ color: C.aluLight }}>{l}</p>
@@ -574,12 +607,36 @@ function Home({ setPage, openProduct, products, categories, projects, loading })
   );
 }
 
-function Products({ initialCat, openProduct, products, categories, loading }) {
+function Products({ initialCat, openProduct, products, categories, loading, onSearch }) {
   const [active, setActive] = useState(initialCat || "all");
+  const [searchInput, setSearchInput] = useState("");
   const list = active === "all" ? products : products.filter(p => (p.category?._id || p.category) === active);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    onSearch(searchInput);
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-5 md:px-8 py-16">
       <SectionHead eyebrow="CATALOGUE" title="Products" sub="Prices aren't listed since materials pricing shifts — request a price and we'll respond directly." />
+      <form onSubmit={handleSearch} className="flex gap-3 mb-8 max-w-md">
+        <input
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          placeholder="Search products..."
+          className="flex-1 px-4 py-2.5 text-sm"
+          style={{ border: "1px solid #C9C5BA", background: "white" }}
+        />
+        <button type="submit" className="ff-mono text-xs uppercase px-4 py-2.5" style={{ background: C.ink, color: "white" }}>
+          Search
+        </button>
+        {searchInput && (
+          <button type="button" onClick={() => { setSearchInput(""); onSearch(""); }} className="ff-mono text-xs uppercase px-3" style={{ color: "#6B6960" }}>
+            Clear
+          </button>
+        )}
+      </form>
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-3 mb-10">
           <button onClick={() => setActive("all")} className="ff-mono text-xs uppercase px-4 py-2" style={{ border: `1px solid ${active === "all" ? C.safety : "#C9C5BA"}`, color: active === "all" ? C.safety : "#6B6960" }}>All</button>
@@ -685,7 +742,9 @@ function Projects({ projects, loading }) {
   );
 }
 
-function About({ setPage }) {
+function About({ setPage, settings }) {
+  const aboutText = settings?.aboutText ||
+    "We supply, fabricate and install aluminium profiles, windows, doors and accessories for contractors, builders, businesses and homeowners in Gwaraka and surrounding areas.";
   return (
     <div>
       <div className="max-w-6xl mx-auto px-5 md:px-8 py-16">
@@ -694,7 +753,7 @@ function About({ setPage }) {
           <div>
             <h3 className="ff-display font-semibold text-lg mb-3" style={{ color: C.ink }}>What we do</h3>
             <p className="ff-body text-sm leading-relaxed" style={{ color: "#54524C" }}>
-              We supply, fabricate and install aluminium profiles, windows, doors and accessories for contractors, builders, businesses and homeowners in Gwaraka and surrounding areas.
+              {aboutText}
             </p>
           </div>
           <div>
@@ -718,7 +777,12 @@ function About({ setPage }) {
   );
 }
 
-function Contact({ products }) {
+function Contact({ products, settings }) {
+  const address = settings?.address || "Gwaraka, Aluminum Village, Habitat Plaza";
+  const phone = settings?.phone || "+234 806 098 4868";
+  const email = settings?.email || "hello@manikmaterials.ng";
+  const hours = settings?.hours || "Mon – Sat, 8am – 6pm";
+  const whatsapp = settings?.whatsapp || WHATSAPP_NUMBER;
   return (
     <div className="max-w-6xl mx-auto px-5 md:px-8 py-16">
       <SectionHead eyebrow="GET IN TOUCH" title="Request a quote" sub="Tell us what you need — quantity, colour, size, deadline — and we'll get back to you." />
@@ -729,14 +793,23 @@ function Contact({ products }) {
         <div className="space-y-6">
           <div className="p-6" style={{ background: C.concreteD }}>
             <p className="ff-mono text-xs uppercase tracking-widest mb-4" style={{ color: C.safety }}>Visit us</p>
-            <p className="ff-body text-sm mb-3 flex items-start gap-2" style={{ color: C.ink }}><MapPin size={15} className="mt-0.5 shrink-0" /> Gwaraka, Aluminum Village, Habitat Plaza</p>
-            <p className="ff-body text-sm mb-3 flex items-center gap-2" style={{ color: C.ink }}><Phone size={15} /> +234 806 098 4868</p>
-            <p className="ff-body text-sm mb-3 flex items-center gap-2" style={{ color: C.ink }}><Mail size={15} /> hello@manikmaterials.ng</p>
-            <p className="ff-body text-sm flex items-center gap-2" style={{ color: C.ink }}><Clock size={15} /> Mon – Sat, 8am – 6pm</p>
+            <p className="ff-body text-sm mb-3 flex items-start gap-2" style={{ color: C.ink }}><MapPin size={15} className="mt-0.5 shrink-0" /> {address}</p>
+            <p className="ff-body text-sm mb-3 flex items-center gap-2" style={{ color: C.ink }}><Phone size={15} /> {phone}</p>
+            <p className="ff-body text-sm mb-3 flex items-center gap-2" style={{ color: C.ink }}><Mail size={15} /> {email}</p>
+            <p className="ff-body text-sm flex items-center gap-2" style={{ color: C.ink }}><Clock size={15} /> {hours}</p>
           </div>
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-4 text-sm font-medium text-white" style={{ background: "#25D366" }}>
+          <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-4 text-sm font-medium text-white" style={{ background: "#25D366" }}>
             <MessageCircle size={16} /> Chat on WhatsApp
           </a>
+          {settings?.mapEmbedUrl && (
+            <div className="overflow-hidden" style={{ border: `1px solid ${C.ink}22` }}>
+              <iframe
+                src={settings.mapEmbedUrl}
+                width="100%" height="200" style={{ border: 0 }}
+                loading="lazy" title="MANIK location map"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -751,24 +824,28 @@ export default function App() {
   const [presetCat, setPresetCat] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalProduct, setModalProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     async function loadAll() {
       try {
-        const [p, c, pr] = await Promise.all([
+        const [p, c, pr, s] = await Promise.all([
           api.getProducts(),
           api.getCategories(),
           api.getProjects(),
+          api.getSettings(),
         ]);
         setProducts(p);
         setCategories(c);
         setProjects(pr);
+        setSettings(s);
       } catch (err) {
         setLoadError(err.message);
       } finally {
@@ -777,6 +854,17 @@ export default function App() {
     }
     loadAll();
   }, []);
+
+  // Re-fetch products whenever a search is run, without re-fetching everything else
+  const handleSearch = async (term) => {
+    setSearchTerm(term);
+    try {
+      const p = await api.getProducts(term);
+      setProducts(p);
+    } catch (err) {
+      setLoadError(err.message);
+    }
+  };
 
   const setPage = (p, cat) => {
     setPageRaw(p);
@@ -793,16 +881,16 @@ export default function App() {
         <LoadError message={loadError} />
       ) : (
         <>
-          {page === "home" && <Home setPage={setPage} openProduct={setModalProduct} products={products} categories={categories} projects={projects} loading={loading} />}
-          {page === "products" && <Products initialCat={presetCat} openProduct={setModalProduct} products={products} categories={categories} loading={loading} />}
+          {page === "home" && <Home setPage={setPage} openProduct={setModalProduct} products={products} categories={categories} projects={projects} loading={loading} settings={settings} />}
+          {page === "products" && <Products initialCat={presetCat} openProduct={setModalProduct} products={products} categories={categories} loading={loading} onSearch={handleSearch} />}
           {page === "services" && <Services setPage={setPage} />}
           {page === "projects" && <Projects projects={projects} loading={loading} />}
-          {page === "about" && <About setPage={setPage} />}
-          {page === "contact" && <Contact products={products} />}
+          {page === "about" && <About setPage={setPage} settings={settings} />}
+          {page === "contact" && <Contact products={products} settings={settings} />}
         </>
       )}
-      <Footer setPage={setPage} />
-      <WhatsAppFloat />
+      <Footer setPage={setPage} settings={settings} />
+      <WhatsAppFloat settings={settings} />
       <ProductModal product={modalProduct} onClose={() => setModalProduct(null)} products={products} />
     </div>
   );
